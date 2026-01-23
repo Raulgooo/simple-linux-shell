@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #define PATH_SEPARATOR ":"
 
 int main(int argc, char *argv[]) {
@@ -59,8 +62,51 @@ int main(int argc, char *argv[]) {
 
       }
       else {
+        char *command_name = strdup(command);
+        char *space = strchr(command_name, ' ');
+        if (space != NULL) {
+          *space = '\0';
+        }
+        char *path = getenv("PATH");
+        if (path != NULL) {
+          char *pathcopy = strdup(path);
+          char *dir = strtok(pathcopy, PATH_SEPARATOR);
+          int found = 0;
+          while (dir != NULL) {
+            char fullpath[1024];
+            snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, command_name);
+            if (access(fullpath, X_OK) == 0) {
+              found = 1;
+              pid_t pid = fork();
+              if(pid == 0) {
+                char *args[64];
+                int arg_count = 0;
+                char *command_copy = strdup(command);
+                char *token = strtok(command_copy, " ");
+                while (token != NULL && arg_count < 63) {
+                  args[arg_count++] = token;
+                  token = strtok(NULL, " ");
+                }
+                args[arg_count] = NULL;
+                execv(fullpath, args);
+                exit(1);
+              } else {
+                int status;
+                waitpid(pid, &status, 0);
+                break;
+              }
+            }
+            dir = strtok(NULL, PATH_SEPARATOR);
+          }
+          free(pathcopy);
+          free(command_name);
+          if (!found) {
+            printf("%s: not found\n", command);
+          }
+        } else {
         printf("%s: not found\n", command);
-        continue;
       }
     } 
+    
   }
+}
