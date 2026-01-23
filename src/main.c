@@ -59,6 +59,15 @@ int main(int argc, char *argv[]) {
       if (strncmp(command, "echo", 4) == 0) {
         printf("%s\n", &command[5]);
         continue;
+      
+      if (strncmp(command, "pwd", 3) == 0) {
+        char cwd[1024];
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+          printf("%s\n", cwd);
+        } else {
+          printf("getcwd() error");
+        }
+      }
 
       }
       else {
