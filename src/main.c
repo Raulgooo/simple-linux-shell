@@ -7,16 +7,27 @@ int main(int argc, char *argv[]) {
   setbuf(stdout, NULL);
   char command[1024];
   while (1) {
-  printf("$ ");
-  fgets(command, sizeof(command), stdin);
-  command[strcspn(command, "\n")] = '\0';
+    printf("$ ");
+    fgets(command, sizeof(command), stdin);
+    command[strcspn(command, "\n")] = '\0';
+    int length = strlen(command);
 
-  if (strcmp(command, "exit") == 0) {
-    return 0;
-  }
-  
-  printf("%s: command not found\n", command);
-  }
+    if (length == 0) {
+      continue;
+    }
 
-  return 0;
+    if (strcmp(command, "exit") == 0) {
+      return 0;
+    }
+    
+    if (strncmp(command, "echo", 4) == 0) {
+      printf("%s\n", &command[5]);
+      continue;
+    }
+
+    else {
+      printf("%s: command not found\n", command);
+      continue;
+    }
+  }
 }
