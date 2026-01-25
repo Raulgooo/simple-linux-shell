@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
         char cwd[1024];
         if (getcwd(cwd, sizeof(cwd)) != NULL)
         {
-          printf(cwd);
+          printf("%s\n", cwd);
         }
         else {
           printf("getcwd() error");
