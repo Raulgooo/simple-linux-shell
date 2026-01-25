@@ -68,9 +68,11 @@ int main(int argc, char *argv[]) {
         if (getcwd(cwd, sizeof(cwd)) != NULL)
         {
           printf("%s\n", cwd);
+          continue;
         }
         else {
           printf("getcwd() error");
+          continue;
         }
       }
       if (strncmp(command, "cd", 2) == 0) {
