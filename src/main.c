@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
       }
       if (strncmp(command, "cd", 2) == 0) {
         char *dir = &command[3];
-        if ((strcmp, "~") == 0) {
+        if (strcmp(dir,"~") == 0) {
           dir = getenv("HOME");
         }
         if (chdir(dir) == -1) {
