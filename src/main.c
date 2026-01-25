@@ -24,6 +24,7 @@ int main(int argc, char *argv[]) {
       if (strcmp(cmd_name, "exit") == 0 ||
           strcmp(cmd_name, "echo") == 0 ||
           strcmp(cmd_name, "type") == 0||
+          strcmp(cmd_name, "cd") == 0||
           strcmp(cmd_name, "pwd") == 0) {
         printf("%s is a shell builtin\n", cmd_name);
       } else {
@@ -71,6 +72,15 @@ int main(int argc, char *argv[]) {
         else {
           printf("getcwd() error");
         }
+      }
+      if (strncmp(command, "cd", 2) == 0) {
+        char *dir[1024];
+        dir = strdup(&command[3]);
+        if (chdir(dir) == -1) {
+          printf("cd: %s: No such file or directory\n");
+        }
+        
+        
       }
         
       else {
