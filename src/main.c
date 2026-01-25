@@ -64,8 +64,14 @@ int main(int argc, char *argv[]) {
 
       if (strncmp(command, "pwd", 3) == 0) {
         char cwd[1024];
-        cwd = getcwd(cwd, sizeof(cwd));
-        printf(cwd);
+        if (getcwd(cwd, sizeof(cwd)) != NULL)
+        {
+          printf(cwd);
+        };
+        else {
+          printf("getcwd() error");
+        }
+        
       }
       else {
         char *command_name = strdup(command);
