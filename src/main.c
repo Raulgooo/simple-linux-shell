@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
         else {
           printf("getcwd() error");
         }
+      }
         
       else {
         char *command_name = strdup(command);
