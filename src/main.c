@@ -67,12 +67,11 @@ int main(int argc, char *argv[]) {
         if (getcwd(cwd, sizeof(cwd)) != NULL)
         {
           printf(cwd);
-        };
+        }
         else {
           printf("getcwd() error");
         }
         
-      }
       else {
         char *command_name = strdup(command);
         char *space = strchr(command_name, ' ');
@@ -121,4 +120,5 @@ int main(int argc, char *argv[]) {
     } 
     
   }
+}
 }
