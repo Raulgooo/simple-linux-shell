@@ -74,10 +74,9 @@ int main(int argc, char *argv[]) {
         }
       }
       if (strncmp(command, "cd", 2) == 0) {
-        char *dir[1024];
-        dir = strdup(&command[3]);
+        char *dir = &command[3];
         if (chdir(dir) == -1) {
-          printf("cd: %s: No such file or directory\n");
+          printf("cd: %s: No such file or directory\n", dir);
         }
         
         
