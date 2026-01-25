@@ -77,6 +77,7 @@ int main(int argc, char *argv[]) {
         char *dir = &command[3];
         if (chdir(dir) == -1) {
           printf("cd: %s: No such file or directory\n", dir);
+          continue;
         }
         
         
