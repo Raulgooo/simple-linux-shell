@@ -23,7 +23,9 @@ int main(int argc, char *argv[]) {
       char *cmd_name = &command[5];
       if (strcmp(cmd_name, "exit") == 0 ||
           strcmp(cmd_name, "echo") == 0 ||
-          strcmp(cmd_name, "type") == 0) {
+          strcmp(cmd_name, "type") == 0||
+          strcmp(cmd_name, "cd") == 0||
+          strcmp(cmd_name, "pwd") == 0) {
         printf("%s is a shell builtin\n", cmd_name);
       } else {
           char *path = getenv("PATH");
@@ -59,15 +61,6 @@ int main(int argc, char *argv[]) {
       if (strncmp(command, "echo", 4) == 0) {
         printf("%s\n", &command[5]);
         continue;
-      
-      if (strncmp(command, "pwd", 3) == 0) {
-        char cwd[1024];
-        if (getcwd(cwd, sizeof(cwd)) != NULL) {
-          printf("%s\n", cwd);
-        } else {
-          printf("getcwd() error");
-        }
-      }
 
       }
       else {
