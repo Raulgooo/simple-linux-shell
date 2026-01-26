@@ -61,8 +61,33 @@ int main(int argc, char *argv[]) {
       if (strncmp(command, "echo", 4) == 0) {
         printf("%s\n", &command[5]);
         continue;
-
       }
+
+      if (strncmp(command, "pwd", 3) == 0) {
+        char cwd[1024];
+        if (getcwd(cwd, sizeof(cwd)) != NULL)
+        {
+          printf("%s\n", cwd);
+          continue;
+        }
+        else {
+          printf("getcwd() error");
+          continue;
+        }
+      }
+      if (strncmp(command, "cd", 2) == 0) {
+        char *dir = &command[3];
+        if (strcmp(dir,"~") == 0) {
+          dir = getenv("HOME");
+        }
+        if (chdir(dir) == -1) {
+          printf("cd: %s: No such file or directory\n", dir);
+          continue;
+        }
+        
+        
+      }
+        
       else {
         char *command_name = strdup(command);
         char *space = strchr(command_name, ' ');
