@@ -67,26 +67,33 @@ void tokenize(char *command, struct State *state) {
                     state->token_buffer[state->token_index++] = c;
                 }
                 break;
+
             case SQUOTE:
-                if (c == '\'') state->current_state = NORMAL;
-                else state->token_buffer[state->token_index++] = c;
-                break;
-            case DQUOTE:
-              if (c == '\"') {
-                state->current_state = NORMAL;
-              } 
-              else if (c == '\\') {
-                char next = command[i + 1];
-                if (next == '\"' || next == '\\' || next == '$') {
-                  state->token_buffer[state->token_index++] = command[i];
+                if (c == '\'') {
+                    state->current_state = NORMAL;
                 } else {
                     state->token_buffer[state->token_index++] = c;
-                  }
-              } 
-              else {
-                state->token_buffer[state->token_index++] = c;
-              } 
-              break;
+                }
+                break;
+
+            case DQUOTE:
+                if (c == '\"') {
+                    state->current_state = NORMAL;
+                } 
+                else if (c == '\\') {
+                    char next = command[i + 1];
+                    if (next == '\"' || next == '\\' || next == '$') {
+                        i++; 
+                        state->token_buffer[state->token_index++] = command[i]; 
+                    } else {
+                        state->token_buffer[state->token_index++] = c;
+                    }
+                } 
+                else {
+                    state->token_buffer[state->token_index++] = c;
+                } 
+                break;
+
             case BACKSLASH:
                 state->token_buffer[state->token_index++] = c;
                 state->current_state = state->prev_state;
