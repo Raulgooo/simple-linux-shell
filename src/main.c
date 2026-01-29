@@ -7,133 +7,128 @@
 
 #define PATH_SEPARATOR ":"
 
-int main(int argc, char *argv[]) {
-  // Flush after every printf
-  setbuf(stdout, NULL);
-  char command[1024];
-  while (1) {
-    printf("$ ");
-    fgets(command, sizeof(command), stdin);
-    command[strcspn(command, "\n")] = '\0';
-    int length = strlen(command);
-    if (length == 0) {
-      continue;
+typedef enum { NORMAL, SQUOTE, DQUOTE, BACKSLASH } ParseState;
+
+typedef struct {
+    char *text;
+    int type; 
+} Token;
+
+struct State {
+    ParseState current_state;
+    ParseState prev_state;
+    char token_buffer[1024];
+    int token_index;
+    int token_count;
+    Token tokens[64];
+};
+
+void add_token(struct State *state, int is_operator) {
+    if (state->token_index > 0) {
+        state->token_buffer[state->token_index] = '\0';
+        state->tokens[state->token_count].text = strdup(state->token_buffer);
+        state->tokens[state->token_count].type = is_operator;
+        state->token_count++;
+        state->token_index = 0;
     }
-    if (strncmp(command, "type", 4) == 0) {
-      char *cmd_name = &command[5];
-      if (strcmp(cmd_name, "exit") == 0 ||
-          strcmp(cmd_name, "echo") == 0 ||
-          strcmp(cmd_name, "type") == 0||
-          strcmp(cmd_name, "cd") == 0||
-          strcmp(cmd_name, "pwd") == 0) {
-        printf("%s is a shell builtin\n", cmd_name);
-      } else {
-          char *path = getenv("PATH");
-          if (path != NULL) {
-            char *pathcopy = strdup(path);
-            char *dir = strtok(pathcopy, PATH_SEPARATOR);
-            int found = 0;
-            while (dir != NULL) {
-              char fullpath[1024];
-              snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, cmd_name);
-              if (access(fullpath, X_OK) == 0) {
-                printf("%s is %s\n", cmd_name, fullpath);
-                found = 1;
+}
+
+void init_state(struct State *s) {
+    s->current_state = NORMAL;
+    s->prev_state = NORMAL;
+    s->token_index = 0;
+    s->token_count = 0;
+    memset(s->token_buffer, 0, sizeof(s->token_buffer));
+}
+
+void tokenize(char *command, struct State *state) {
+    int i = 0;
+    init_state(state);
+
+    while (command[i] != '\0') {
+        char c = command[i];
+        switch (state->current_state) {
+            case NORMAL:
+                if (c == ' ') {
+                    add_token(state, 0);
+                } else if (c == '\'') {
+                    state->current_state = SQUOTE;
+                } else if (c == '\"') {
+                    state->current_state = DQUOTE;
+                } else if (c == '\\') {
+                    state->prev_state = NORMAL;
+                    state->current_state = BACKSLASH;
+                } else if (c == '|' || c == '>') {
+                    add_token(state, 0);
+                    state->token_buffer[0] = c;
+                    state->token_index = 1;
+                    add_token(state, 1);
+                } else {
+                    state->token_buffer[state->token_index++] = c;
+                }
                 break;
-              }
-              dir = strtok(NULL, PATH_SEPARATOR);
-            }
-            free(pathcopy);
-            if (!found) {
-              printf("%s: not found\n", cmd_name);
-            }
-          } else {
-            printf("%s: not found\n", cmd_name);
-          }
-          continue;
+            case SQUOTE:
+                if (c == '\'') state->current_state = NORMAL;
+                else state->token_buffer[state->token_index++] = c;
+                break;
+            case DQUOTE:
+                if (c == '\"') state->current_state = NORMAL;
+                else state->token_buffer[state->token_index++] = c;
+                break;
+            case BACKSLASH:
+                state->token_buffer[state->token_index++] = c;
+                state->current_state = state->prev_state;
+                break;
         }
-        continue;
-      }
-      if (strcmp(command, "exit") == 0) {
-        return 0;
-      }
+        i++; 
+    }
+    add_token(state, 0); 
+}
 
-      if (strncmp(command, "echo", 4) == 0) {
-        printf("%s\n", &command[5]);
-        continue;
-      }
+int main() {
+    setbuf(stdout, NULL);
+    char command[1024];
+    struct State working_state;
 
-      if (strncmp(command, "pwd", 3) == 0) {
-        char cwd[1024];
-        if (getcwd(cwd, sizeof(cwd)) != NULL)
-        {
-          printf("%s\n", cwd);
-          continue;
+    while (1) {
+        printf("$ ");
+        if (!fgets(command, sizeof(command), stdin)) break;
+        command[strcspn(command, "\n")] = '\0';
+        tokenize(command, &working_state);
+        if (working_state.token_count == 0) continue;
+
+        char *cmd = working_state.tokens[0].text;
+
+        if (strcmp(cmd, "exit") == 0) return 0;
+
+        if (strcmp(cmd, "echo") == 0) {
+            for (int i = 1; i < working_state.token_count; i++) {
+                printf("%s%s", working_state.tokens[i].text, (i == working_state.token_count - 1) ? "" : " ");
+            }
+            printf("\n");
+        } 
+        else if (strcmp(cmd, "cd") == 0) {
+            char *path = (working_state.token_count > 1) ? working_state.tokens[1].text : getenv("HOME");
+            if (chdir(path) != 0) perror("cd");
         }
         else {
-          printf("getcwd() error");
-          continue;
-        }
-      }
-      if (strncmp(command, "cd", 2) == 0) {
-        char *dir = &command[3];
-        if (strcmp(dir,"~") == 0) {
-          dir = getenv("HOME");
-        }
-        if (chdir(dir) == -1) {
-          printf("cd: %s: No such file or directory\n", dir);
-          continue;
-        }
-        
-        
-      }
-        
-      else {
-        char *command_name = strdup(command);
-        char *space = strchr(command_name, ' ');
-        if (space != NULL) {
-          *space = '\0';
-        }
-        char *path = getenv("PATH");
-        if (path != NULL) {
-          char *pathcopy = strdup(path);
-          char *dir = strtok(pathcopy, PATH_SEPARATOR);
-          int found = 0;
-          while (dir != NULL) {
-            char fullpath[1024];
-            snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, command_name);
-            if (access(fullpath, X_OK) == 0) {
-              found = 1;
-              pid_t pid = fork();
-              if(pid == 0) {
-                char *args[64];
-                int arg_count = 0;
-                char *command_copy = strdup(command);
-                char *token = strtok(command_copy, " ");
-                while (token != NULL && arg_count < 63) {
-                  args[arg_count++] = token;
-                  token = strtok(NULL, " ");
+            pid_t pid = fork();
+            if (pid == 0) {
+                char *args[65];
+                for (int i = 0; i < working_state.token_count; i++) {
+                    args[i] = working_state.tokens[i].text;
                 }
-                args[arg_count] = NULL;
-                execv(fullpath, args);
+                args[working_state.token_count] = NULL;
+                execvp(args[0], args);
+                fprintf(stderr, "%s: command not found\n", args[0]);
                 exit(1);
-              } else {
-                int status;
-                waitpid(pid, &status, 0);
-                break;
-              }
+            } else {
+                wait(NULL);
             }
-            dir = strtok(NULL, PATH_SEPARATOR);
-          }
-          free(pathcopy);
-          free(command_name);
-          if (!found) {
-            printf("%s: not found\n", command);
-          }
-        } else {
-        printf("%s: not found\n", command);
-      }
-    } 
-    
-  }
+        }
+        for (int i = 0; i < working_state.token_count; i++) {
+            free(working_state.tokens[i].text);
+        }
+    }
+    return 0;
 }
