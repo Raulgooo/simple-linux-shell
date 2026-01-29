@@ -184,6 +184,7 @@ int main() {
         tokenize(command, &working_state);
         if (working_state.token_count == 0) continue;
 
+        int original_count = working_state.token_count;
         char *cmd = working_state.tokens[0].text;
         int saved_fd = -1;
         int target_fd_id = 1;
@@ -262,19 +263,21 @@ int main() {
                 exit(1);
             } else {
                 wait(NULL);
-                for (int i = 0; i < working_state.token_count; i++) {
-                  free(working_state.tokens[i].text);
-                }
-            }
+              }
         }
 
-        if (saved_fd != -1) {
-            dup2(saved_fd, target_fd_id);
-            close(saved_fd);
-        }
-        for (int i = 0; i < working_state.token_count; i++) {
-            free(working_state.tokens[i].text);
-        }
+    if (saved_fd != -1) {
+      dup2(saved_fd, target_fd_id);
+      close(saved_fd);
+    }
+
+
+    for (int i = 0; i < original_count; i++) {
+      if (working_state.tokens[i].text != NULL) {
+        free(working_state.tokens[i].text);
+        working_state.tokens[i].text = NULL; 
+      }
     }
     return 0;
+    
 }
