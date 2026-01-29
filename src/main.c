@@ -62,7 +62,7 @@ void tokenize(char *command, struct State *state) {
                       state->token_index = 2;
                       i++;
                   }
-                  if (c == '|' && command[i + 1] == '|') {
+                  else if (c == '|' && command[i + 1] == '|') {
                       state->token_buffer[0] = '|';
                       state->token_buffer[1] = '|';
                       state->token_index = 2;
@@ -150,7 +150,7 @@ int manage_redirects(struct State *state, int *target_fd) {
         int flags = O_WRONLY | O_CREAT;
         int fd_to_replace = 1;
 
-        if (strcmp(current_token.text, ">") == 0 || strcmp(current_token.text, "1>") == 0) {
+        else if (strcmp(current_token.text, ">") == 0 || strcmp(current_token.text, "1>") == 0) {
           flags |= O_TRUNC;
           fd_to_replace = 1;
         }
