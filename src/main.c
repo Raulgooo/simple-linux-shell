@@ -141,43 +141,35 @@ void tokenize(char *command, struct State *state) {
 }
 
 int manage_redirects(struct State *state, int *target_fd) {
-  for (int i = 0; i < state->token_count; i++) {
-    Token current_token = state->tokens[i];
-    char *filename_token = state->tokens[i + 1].text;
-    int flags = O_WRONLY | O_CREAT;
-    int fd_to_replace = 1;
-    if (strcmp(current_token.text, ">") == 0) {
-      flags |= O_TRUNC;
-    } 
-    else if (strcmp(current_token.text, ">>") == 0) {
-      flags |= O_APPEND;
-    } 
-    else if (strcmp(current_token.text, "2>") == 0) {
-      flags |= O_TRUNC;
-      fd_to_replace = 2;
-    } 
-    else if (strcmp(current_token.text, "2>>") == 0) {
-      flags |= O_APPEND;
-      fd_to_replace = 2;
-    } 
-    else {
-      continue; 
+    for (int i = 0; i < state->token_count; i++) {
+        Token current_token = state->tokens[i];
+        
+        if (i + 1 >= state->token_count) return -1; 
+        char *filename_token = state->tokens[i + 1].text;
 
+        int flags = O_WRONLY | O_CREAT;
+        int fd_to_replace = 1;
+
+        if (strcmp(current_token.text, ">") == 0) flags |= O_TRUNC;
+        else if (strcmp(current_token.text, ">>") == 0) flags |= O_APPEND;
+        else if (strcmp(current_token.text, "2>") == 0) { flags |= O_TRUNC; fd_to_replace = 2; }
+        else if (strcmp(current_token.text, "2>>") == 0) { flags |= O_APPEND; fd_to_replace = 2; }
+        else continue; 
+
+        int file_fd = open(filename_token, flags, 0644);
+        if (file_fd < 0) { perror("open"); return -1; }
+
+        int saved_fd = dup(fd_to_replace);
+        
+        if (target_fd != NULL) *target_fd = fd_to_replace;
+        
+        dup2(file_fd, fd_to_replace);
+        close(file_fd);
+
+        state->token_count = i;
+        return saved_fd;
     }
-  int file_fd = open(filename_token, flags, 0644);
-  if (file_fd < 0) {
-      perror("open");
-      return -1;
-  }
-  int saved_fd = dup(fd_to_replace);
-  *target_fd = fd_to_replace;
-  dup2(file_fd, fd_to_replace);
-  close(file_fd);
-
-  state->token_count = i;
-  return saved_fd;
-}
-  return -1;
+    return -1;
 }
 
 int main() {
@@ -193,6 +185,9 @@ int main() {
         if (working_state.token_count == 0) continue;
 
         char *cmd = working_state.tokens[0].text;
+        int saved_fd = -1;
+        int target_fd_id = 1;
+
         if (strcmp(cmd, "type") == 0) {
     if (working_state.token_count > 1) {
         char *arg = working_state.tokens[1].text;
@@ -224,16 +219,15 @@ int main() {
             }
                     }
     }
-    continue; 
         }
         if (strcmp(cmd, "exit") == 0) return 0;
 
         if (strcmp(cmd, "echo") == 0) {
+            saved_fd = manage_redirects(&working_state, &target_fd_id);
             for (int i = 1; i < working_state.token_count; i++) {
                 printf("%s%s", working_state.tokens[i].text, (i == working_state.token_count - 1) ? "" : " ");
             }
             printf("\n");
-            continue;
         }
 
         if (strcmp(cmd, "pwd") == 0) {
@@ -243,7 +237,6 @@ int main() {
             } else {
                 perror("pwd");
             }
-            continue;
         }
         else if (strcmp(cmd, "cd") == 0) {
             char *path = (working_state.token_count > 1) ? working_state.tokens[1].text : getenv("HOME");
@@ -253,7 +246,6 @@ int main() {
             if (chdir(path) != 0) {
               printf("cd: %s: No such file or directory\n", path);
             }
-            continue;
         }
         else {
             pid_t pid = fork();
@@ -274,7 +266,11 @@ int main() {
                   free(working_state.tokens[i].text);
                 }
             }
-            continue;
+        }
+
+        if (saved_fd != -1) {
+            dup2(saved_fd, target_fd_id);
+            close(saved_fd);
         }
         for (int i = 0; i < working_state.token_count; i++) {
             free(working_state.tokens[i].text);
