@@ -150,7 +150,7 @@ int manage_redirects(struct State *state, int *target_fd) {
         int flags = O_WRONLY | O_CREAT;
         int fd_to_replace = 1;
 
-        else if (strcmp(current_token.text, ">") == 0 || strcmp(current_token.text, "1>") == 0) {
+        if (strcmp(current_token.text, ">") == 0 || strcmp(current_token.text, "1>") == 0) {
           flags |= O_TRUNC;
           fd_to_replace = 1;
         }
