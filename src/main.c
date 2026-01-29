@@ -143,55 +143,33 @@ void tokenize(char *command, struct State *state) {
 int manage_redirects(struct State *state, int *target_fd) {
     for (int i = 0; i < state->token_count; i++) {
         Token current_token = state->tokens[i];
-        if (i + 1 >= state->token_count) return -1; 
-        char *filename_token = state->tokens[i + 1].text;
+        if (i + 1 >= state->token_count) return -1;
+        char *filename = state->tokens[i + 1].text;
 
         int flags = O_WRONLY | O_CREAT;
         int fd_to_replace = 1;
         int both = 0;
 
-        if (strcmp(current_token.text, ">") == 0 || strcmp(current_token.text, "1>") == 0) {
-            flags |= O_TRUNC;
-        }
-        else if (strcmp(current_token.text, ">>") == 0 || strcmp(current_token.text, "1>>") == 0) {
-            flags |= O_APPEND;
-        }
-        else if (strcmp(current_token.text, "2>") == 0) {
-            flags |= O_TRUNC;
-            fd_to_replace = 2;
-        }
-        else if (strcmp(current_token.text, "2>>") == 0) {
-            flags |= O_APPEND;
-            fd_to_replace = 2;
-        }
-        else if (strcmp(current_token.text, "&>") == 0 || strcmp(current_token.text, ">&") == 0) {
-            flags |= O_TRUNC;
-            both = 1;
-        }
-        else if (strcmp(current_token.text, "&>>") == 0) {
-            flags |= O_APPEND;
-            both = 1;
-        }
-        else continue; 
+        if (strcmp(current_token.text, ">") == 0 || strcmp(current_token.text, "1>") == 0) flags |= O_TRUNC;
+        else if (strcmp(current_token.text, ">>") == 0 || strcmp(current_token.text, "1>>") == 0) flags |= O_APPEND;
+        else if (strcmp(current_token.text, "2>") == 0) { flags |= O_TRUNC; fd_to_replace = 2; }
+        else if (strcmp(current_token.text, "2>>") == 0) { flags |= O_APPEND; fd_to_replace = 2; }
+        else if (strcmp(current_token.text, "&>") == 0 || strcmp(current_token.text, ">&") == 0) { flags |= O_TRUNC; both = 1; }
+        else if (strcmp(current_token.text, "&>>") == 0) { flags |= O_APPEND; both = 1; }
+        else continue;
 
-        int file_fd = open(filename_token, flags, 0644);
-        if (file_fd < 0) {
-            perror("open");
-            return -1;
-        }
+        int file_fd = open(filename, flags, 0644);
+        if (file_fd < 0) { perror("open"); return -1; }
 
-        int saved_fd;
+        int saved_fd = dup(1); // Backup para restaurar
+        if (target_fd) *target_fd = fd_to_replace;
+
         if (both) {
-            saved_fd = dup(1);
             dup2(file_fd, 1);
             dup2(file_fd, 2);
-            if (target_fd) *target_fd = 1;
         } else {
-            saved_fd = dup(fd_to_replace);
-            if (target_fd) *target_fd = fd_to_replace;
             dup2(file_fd, fd_to_replace);
         }
-
         close(file_fd);
         state->token_count = i;
         return saved_fd;
