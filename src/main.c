@@ -259,7 +259,7 @@ int main() {
             pid_t pid = fork();
             if (pid == 0) {
                 char *args[65];
-                manage_redirects(&working_state, 1);
+                manage_redirects(&working_state, NULL);
                 
                 for (int i = 0; i < working_state.token_count; i++) {
                     args[i] = working_state.tokens[i].text;
