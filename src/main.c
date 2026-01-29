@@ -286,7 +286,7 @@ else {
 
     if (pipe_idx != -1) {
         int pipe_fds[2];
-        if (pipe(pipe_fds) == -1) { perror("pipe"); goto cleanup; }
+        if (pipe(pipe_fds) == -1) { perror("pipe"); exit(1); }
         if (fork() == 0) {
             manage_redirects(&working_state, NULL);
             dup2(pipe_fds[1], STDOUT_FILENO);
