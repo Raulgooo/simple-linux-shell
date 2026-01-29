@@ -227,9 +227,9 @@ int main() {
                     }
     }
         }
-        if (strcmp(cmd, "exit") == 0) return 0;
+        else if (strcmp(cmd, "exit") == 0) return 0;
 
-        if (strcmp(cmd, "echo") == 0) {
+        else if (strcmp(cmd, "echo") == 0) {
             saved_fd = manage_redirects(&working_state, &target_fd_id);
             for (int i = 1; i < working_state.token_count; i++) {
                 printf("%s%s", working_state.tokens[i].text, (i == working_state.token_count - 1) ? "" : " ");
@@ -237,7 +237,7 @@ int main() {
             printf("\n");
         }
 
-        if (strcmp(cmd, "pwd") == 0) {
+        else if (strcmp(cmd, "pwd") == 0) {
             char cwd[1024];
             if (getcwd(cwd, sizeof(cwd)) != NULL) {
                 printf("%s\n", cwd);
