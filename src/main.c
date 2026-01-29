@@ -75,7 +75,7 @@ void tokenize(char *command, struct State *state) {
                   }
                   add_token(state, 1);
                 } 
-                else if ((c == '2' || c == '&') && command[i+1] == '>' && state->token_index == 0){
+                else if ((c == '1' || c == '2' || c == '&') && command[i+1] == '>' && state->token_index == 0){
                     add_token(state, 0);
                     state->token_buffer[0] = c;
                     state->token_buffer[1] = '>';
@@ -150,8 +150,14 @@ int manage_redirects(struct State *state, int *target_fd) {
         int flags = O_WRONLY | O_CREAT;
         int fd_to_replace = 1;
 
-        if (strcmp(current_token.text, ">") == 0) flags |= O_TRUNC;
-        else if (strcmp(current_token.text, ">>") == 0) flags |= O_APPEND;
+        if (strcmp(current_token.text, ">") == 0 || strcmp(current_token.text, "1>") == 0) {
+          flags |= O_TRUNC;
+          fd_to_replace = 1;
+        }
+        else if (strcmp(current_token.text, ">>") == 0 || strcmp(current_token.text, "1>>") == 0) {
+          flags |= O_APPEND;
+          fd_to_replace = 1;
+        }
         else if (strcmp(current_token.text, "2>") == 0) { flags |= O_TRUNC; fd_to_replace = 2; }
         else if (strcmp(current_token.text, "2>>") == 0) { flags |= O_APPEND; fd_to_replace = 2; }
         else continue; 
