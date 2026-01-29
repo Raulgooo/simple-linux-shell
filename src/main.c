@@ -142,7 +142,7 @@ void tokenize(char *command, struct State *state) {
 
 int manage_redirects(struct State *state, int *target_fd) {
   for (int i = 0; i < state->token_count; i++) {
-    int current_token = state->tokens[i];
+    Token current_token = state->tokens[i];
     char *filename_token = state->tokens[i + 1].text;
     int flags = O_WRONLY | O_CREAT;
     int fd_to_replace = 1;
