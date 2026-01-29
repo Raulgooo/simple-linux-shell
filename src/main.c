@@ -98,7 +98,39 @@ int main() {
         if (working_state.token_count == 0) continue;
 
         char *cmd = working_state.tokens[0].text;
-
+        if (strcmp(cmd, "type") == 0) {
+    if (working_state.token_count > 1) {
+        char *arg = working_state.tokens[1].text;
+        if (strcmp(arg, "echo") == 0 || strcmp(arg, "cd") == 0 || 
+            strcmp(arg, "exit") == 0 || strcmp(arg, "type") == 0 || 
+            strcmp(arg, "pwd") == 0) {
+            printf("%s is a shell builtin\n", arg);
+        } 
+        else {
+            char *path_env = getenv("PATH");
+            int found = 0;
+            if (path_env != NULL) {
+                char *path_copy = strdup(path_env); 
+                char *dir = strtok(path_copy, PATH_SEPARATOR);
+                while (dir != NULL) {
+                    char fullpath[1024];
+                    snprintf(fullpath, sizeof(fullpath), "%s/%s", dir, arg);
+                    if (access(fullpath, X_OK) == 0) {
+                        printf("%s is %s\n", arg, fullpath);
+                        found = 1;
+                        break;
+                    }
+                    dir = strtok(NULL, PATH_SEPARATOR);
+                }
+                free(path_copy);
+            }
+            if (!found) {
+                printf("%s: not found\n", arg);
+            }
+                    }
+    }
+    continue; 
+        }
         if (strcmp(cmd, "exit") == 0) return 0;
 
         if (strcmp(cmd, "echo") == 0) {
