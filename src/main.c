@@ -270,7 +270,7 @@ int main() {
                 exit(1);
             } else {
                 wait(NULL);
-                for (int i = 0; i < working_state.token_count_original; i++) {
+                for (int i = 0; i < working_state.token_count; i++) {
                   free(working_state.tokens[i].text);
                 }
             }
