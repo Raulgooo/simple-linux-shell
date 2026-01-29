@@ -109,7 +109,7 @@ int main() {
         } 
         else if (strcmp(cmd, "cd") == 0) {
             char *path = (working_state.token_count > 1) ? working_state.tokens[1].text : getenv("HOME");
-            if (path == '~') {
+            if (strcmp(path, "~") == 0) {
               path = getenv("HOME");
             }
             if (chdir(path) != 0) perror("cd");
