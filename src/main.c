@@ -112,7 +112,9 @@ int main() {
             if (strcmp(path, "~") == 0) {
               path = getenv("HOME");
             }
-            if (chdir(path) != 0) perror("cd");
+            if (chdir(path) != 0) {
+              printf("cd: %s: No such file or directory\n", path);
+            }
         }
         else {
             pid_t pid = fork();
