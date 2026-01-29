@@ -143,35 +143,56 @@ void tokenize(char *command, struct State *state) {
 int manage_redirects(struct State *state, int *target_fd) {
     for (int i = 0; i < state->token_count; i++) {
         Token current_token = state->tokens[i];
-        
         if (i + 1 >= state->token_count) return -1; 
         char *filename_token = state->tokens[i + 1].text;
 
         int flags = O_WRONLY | O_CREAT;
         int fd_to_replace = 1;
+        int both = 0;
 
         if (strcmp(current_token.text, ">") == 0 || strcmp(current_token.text, "1>") == 0) {
-          flags |= O_TRUNC;
-          fd_to_replace = 1;
+            flags |= O_TRUNC;
         }
         else if (strcmp(current_token.text, ">>") == 0 || strcmp(current_token.text, "1>>") == 0) {
-          flags |= O_APPEND;
-          fd_to_replace = 1;
+            flags |= O_APPEND;
         }
-        else if (strcmp(current_token.text, "2>") == 0) { flags |= O_TRUNC; fd_to_replace = 2; }
-        else if (strcmp(current_token.text, "2>>") == 0) { flags |= O_APPEND; fd_to_replace = 2; }
+        else if (strcmp(current_token.text, "2>") == 0) {
+            flags |= O_TRUNC;
+            fd_to_replace = 2;
+        }
+        else if (strcmp(current_token.text, "2>>") == 0) {
+            flags |= O_APPEND;
+            fd_to_replace = 2;
+        }
+        else if (strcmp(current_token.text, "&>") == 0 || strcmp(current_token.text, ">&") == 0) {
+            flags |= O_TRUNC;
+            both = 1;
+        }
+        else if (strcmp(current_token.text, "&>>") == 0) {
+            flags |= O_APPEND;
+            both = 1;
+        }
         else continue; 
 
         int file_fd = open(filename_token, flags, 0644);
-        if (file_fd < 0) { perror("open"); return -1; }
+        if (file_fd < 0) {
+            perror("open");
+            return -1;
+        }
 
-        int saved_fd = dup(fd_to_replace);
-        
-        if (target_fd != NULL) *target_fd = fd_to_replace;
-        
-        dup2(file_fd, fd_to_replace);
+        int saved_fd;
+        if (both) {
+            saved_fd = dup(1);
+            dup2(file_fd, 1);
+            dup2(file_fd, 2);
+            if (target_fd) *target_fd = 1;
+        } else {
+            saved_fd = dup(fd_to_replace);
+            if (target_fd) *target_fd = fd_to_replace;
+            dup2(file_fd, fd_to_replace);
+        }
+
         close(file_fd);
-
         state->token_count = i;
         return saved_fd;
     }
@@ -254,28 +275,69 @@ int main() {
               printf("cd: %s: No such file or directory\n", path);
             }
         }
-        else {
-            pid_t pid = fork();
-            if (pid == 0) {
-                char *args[65];
-                manage_redirects(&working_state, NULL);
-                
-                for (int i = 0; i < working_state.token_count; i++) {
-                    args[i] = working_state.tokens[i].text;
-                }
-                args[working_state.token_count] = NULL;
-                execvp(args[0], args);
-                fprintf(stderr, "%s: command not found\n", args[0]);
-                exit(1);
-            } else {
-                wait(NULL);
-              }
+else {
+    int pipe_idx = -1;
+    for (int i = 0; i < working_state.token_count; i++) {
+        if (strcmp(working_state.tokens[i].text, "|") == 0) {
+            pipe_idx = i;
+            break;
+        }
+    }
+
+    if (pipe_idx != -1) {
+        int pipe_fds[2];
+        if (pipe(pipe_fds) == -1) { perror("pipe"); goto cleanup; }
+        if (fork() == 0) {
+            manage_redirects(&working_state, NULL);
+            dup2(pipe_fds[1], STDOUT_FILENO);
+            close(pipe_fds[0]);
+            close(pipe_fds[1]);
+
+            char *left_args[64];
+            for (int i = 0; i < pipe_idx; i++) left_args[i] = working_state.tokens[i].text;
+            left_args[pipe_idx] = NULL;
+
+            execvp(left_args[0], left_args);
+            perror("execvp left");
+            exit(1);
+        }
+        if (fork() == 0) {
+            dup2(pipe_fds[0], STDIN_FILENO);
+            close(pipe_fds[0]);
+            close(pipe_fds[1]);
+
+            char *right_args[64];
+            int count = 0;
+            for (int i = pipe_idx + 1; i < working_state.token_count; i++) {
+                right_args[count++] = working_state.tokens[i].text;
+            }
+            right_args[count] = NULL;
+
+            execvp(right_args[0], right_args);
+            perror("execvp right");
+            exit(1);
         }
 
-    if (saved_fd != -1) {
-      dup2(saved_fd, target_fd_id);
-      close(saved_fd);
+        close(pipe_fds[0]);
+        close(pipe_fds[1]);
+        wait(NULL);
+        wait(NULL);
+    } 
+    else {
+        pid_t pid = fork();
+        if (pid == 0) {
+            manage_redirects(&working_state, NULL);
+            char *args[65];
+            for (int i = 0; i < working_state.token_count; i++) args[i] = working_state.tokens[i].text;
+            args[working_state.token_count] = NULL;
+            execvp(args[0], args);
+            perror("execvp");
+            exit(1);
+        } else {
+            wait(NULL);
+        }
     }
+}
 
 
     for (int i = 0; i < original_count; i++) {
