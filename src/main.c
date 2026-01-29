@@ -138,7 +138,16 @@ int main() {
                 printf("%s%s", working_state.tokens[i].text, (i == working_state.token_count - 1) ? "" : " ");
             }
             printf("\n");
-        } 
+        }
+
+        if (strcmp(cmd, "pwd") == 0) {
+            char cwd[1024];
+            if (getcwd(cwd, sizeof(cwd)) != NULL) {
+                printf("%s\n", cwd);
+            } else {
+                perror("pwd");
+            }
+        }
         else if (strcmp(cmd, "cd") == 0) {
             char *path = (working_state.token_count > 1) ? working_state.tokens[1].text : getenv("HOME");
             if (strcmp(path, "~") == 0) {
