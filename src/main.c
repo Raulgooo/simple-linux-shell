@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 #define PATH_SEPARATOR ":"
 
@@ -22,6 +23,7 @@ struct State {
     int token_count;
     Token tokens[64];
 };
+
 
 void add_token(struct State *state, int is_operator) {
     if (state->token_index > 0) {
@@ -51,6 +53,40 @@ void tokenize(char *command, struct State *state) {
             case NORMAL:
                 if (c == ' ') {
                     add_token(state, 0);
+                }
+                else if (c == '>' || c == '|') {
+                  add_token(state, 0);
+                  if (c == '>' && command[i + 1] == '>') {
+                      state->token_buffer[0] = '>';
+                      state->token_buffer[1] = '>';
+                      state->token_index = 2;
+                      i++;
+                  }
+                  if (c == '|' && command[i + 1] == '|') {
+                      state->token_buffer[0] = '|';
+                      state->token_buffer[1] = '|';
+                      state->token_index = 2;
+                      i++;
+                  }
+
+                  else {
+                      state->token_buffer[0] = c;
+                      state->token_index = 1;
+                  }
+                  add_token(state, 1);
+                } 
+                else if ((c == '2' || c == '&') && command[i+1] == '>' && state->token_index == 0){
+                    add_token(state, 0);
+                    state->token_buffer[0] = c;
+                    state->token_buffer[1] = '>';
+                    state->token_index = 2;
+                    if (command[i + 2] == '>') {
+                        state->token_buffer[2] = '>';
+                        state->token_index = 3;
+                        i++;
+                    }
+                    i++;
+                    add_token(state, 1);  
                 } else if (c == '\'') {
                     state->current_state = SQUOTE;
                 } else if (c == '\"') {
@@ -102,6 +138,46 @@ void tokenize(char *command, struct State *state) {
         i++; 
     }
     add_token(state, 0); 
+}
+
+int manage_redirects(struct State *state, int *target_fd) {
+  for (int i = 0; i < state->token_count; i++) {
+    current_token = state->tokens[i];
+    filename_token = state->tokens[i + 1].text;
+    int flags = O_WRONLY | O_CREAT;
+    int fd_to_replace = 1;
+    if (strcmp(current_token.text, ">") == 0) {
+      flags |= O_TRUNC;
+    } 
+    else if (strcmp(current_token.text, ">>") == 0) {
+      flags |= O_APPEND;
+    } 
+    else if (strcmp(current_token.text, "2>") == 0) {
+      flags |= O_TRUNC;
+      fd_to_replace = 2;
+    } 
+    else if (strcmp(current_token.text, "2>>") == 0) {
+      flags |= O_APPEND;
+      fd_to_replace = 2;
+    } 
+    else {
+      continue; 
+
+    }
+  int file_fd = open(filename_token, flags, 0644);
+  if (file_fd < 0) {
+      perror("open");
+      return -1;
+  }
+  int saved_fd = dup(fd_to_replace);
+  *target_fd = fd_to_replace;
+  dup2(file_fd, fd_to_replace);
+  close(file_fd);
+
+  state->token_count = i;
+  return saved_fd;
+}
+  return -1;
 }
 
 int main() {
@@ -183,6 +259,8 @@ int main() {
             pid_t pid = fork();
             if (pid == 0) {
                 char *args[65];
+                manage_redirects(&working_state, 1);
+                
                 for (int i = 0; i < working_state.token_count; i++) {
                     args[i] = working_state.tokens[i].text;
                 }
@@ -192,6 +270,9 @@ int main() {
                 exit(1);
             } else {
                 wait(NULL);
+                for (int i = 0; i < working_state.token_count_original; i++) {
+                  free(working_state.tokens[i].text);
+                }
             }
             continue;
         }
