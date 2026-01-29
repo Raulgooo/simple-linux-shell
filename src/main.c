@@ -138,6 +138,7 @@ int main() {
                 printf("%s%s", working_state.tokens[i].text, (i == working_state.token_count - 1) ? "" : " ");
             }
             printf("\n");
+            continue;
         }
 
         if (strcmp(cmd, "pwd") == 0) {
@@ -147,6 +148,7 @@ int main() {
             } else {
                 perror("pwd");
             }
+            continue;
         }
         else if (strcmp(cmd, "cd") == 0) {
             char *path = (working_state.token_count > 1) ? working_state.tokens[1].text : getenv("HOME");
@@ -156,6 +158,7 @@ int main() {
             if (chdir(path) != 0) {
               printf("cd: %s: No such file or directory\n", path);
             }
+            continue;
         }
         else {
             pid_t pid = fork();
@@ -171,6 +174,7 @@ int main() {
             } else {
                 wait(NULL);
             }
+            continue;
         }
         for (int i = 0; i < working_state.token_count; i++) {
             free(working_state.tokens[i].text);
